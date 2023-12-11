@@ -1,6 +1,7 @@
 import numpy as np
 import threadcount as tc
 from itertools import tee
+import time
 
 
 def run(s):  # noqa: C901
@@ -59,6 +60,7 @@ def run(s):  # noqa: C901
     # to models[0], etc.
     spatial_shape = subcube_av.shape[1:]
     fit_results = np.array([np.full(spatial_shape, None, dtype=object)] * len(models))
+    # breakpoint()
     # transpose fit_results for easy addressing by spaxel indices inside loop:
     fit_results_T = fit_results.transpose((1, 2, 0))
 
@@ -78,8 +80,9 @@ def run(s):  # noqa: C901
             cube, subcube_av, this_baseline_range, baseline_fit_type, bl_iterate
         )
         s.baseline_results[s._i] = baseline_fitresults
-
+    count = 0
     for idx in iterate:
+        count = count + 1
         sp = subcube_av[(slice(None), *idx)]
         # this below line is how I originally tried this, and it works.
         # for sp, idx in mpdaf.obj.iter_spe(subcube_av, index=True):
@@ -90,7 +93,10 @@ def run(s):  # noqa: C901
 
         # Fit the least complex model, and make sure of success.
         spec_to_fit = sp
+        start = time.time()
         f = spec_to_fit.lmfit(models[0], **s.lmfit_kwargs)
+        end = time.time()
+        print(count, " time: ", end - start)
         if f is None:
             # fit_results_T[idx] = [None] * len(models)
             continue
@@ -115,10 +121,11 @@ def run(s):  # noqa: C901
 
         # continue with the rest of the models.
         rest = [spec_to_fit.lmfit(model, **s.lmfit_kwargs) for model in models[1:]]
-        fit_results_T[idx] = [f] + rest
-    
+        # fit_results_T[idx] = [f] + rest
+        
     s.model_results = fit_results
     print("Finished the fits.")
+    breakpoint()
 
     # %%
     # make model choices.
