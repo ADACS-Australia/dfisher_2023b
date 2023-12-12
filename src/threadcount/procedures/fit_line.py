@@ -3,7 +3,6 @@ import threadcount as tc
 from itertools import tee
 import time
 
-
 def run(s):  # noqa: C901
     cube = s.cube
     continuum_cube = s.continuum_cube
@@ -95,6 +94,7 @@ def run(s):  # noqa: C901
         spec_to_fit = sp
         start = time.time()
         f = spec_to_fit.lmfit(models[0], **s.lmfit_kwargs)
+        
         end = time.time()
         print(count, " time: ", end - start)
         if f is None:
@@ -125,7 +125,7 @@ def run(s):  # noqa: C901
         
     s.model_results = fit_results
     print("Finished the fits.")
-    breakpoint()
+    # breakpoint()
 
     # %%
     # make model choices.
