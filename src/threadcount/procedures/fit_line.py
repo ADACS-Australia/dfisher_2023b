@@ -1,4 +1,5 @@
 import numpy as np
+from copy import copy
 import threadcount as tc
 from itertools import tee
 import multiprocessing as mp
@@ -194,21 +195,42 @@ def run(s):  # noqa: C901
     img_modelresults = np.empty(spatial_shape, dtype=object)
     img_mc_output = np.empty((len(mc_label_row),) + spatial_shape)
 
-    for index, chosen_model in np.ndenumerate(chosen_models):
-        # choose how many iterations of mc:
-        if snr_image[index] < s.mc_snr:
-            mc_n_iterations = s.mc_n_iterations
-        else:
-            mc_n_iterations = 0
-        if chosen_model is not None:
-            fit_list = chosen_model.mc_iter(mc_n_iterations)
-            img_modelresults[index] = fit_list
+    cm_iterate = np.ndindex(chosen_models.shape)
 
-        img_mc_output[(slice(None), *index)] = tc.fit.extract_spaxel_info_mc(
-            img_modelresults[index], fit_info, keys_to_save
-        )
+    # for index, chosen_model in np.ndenumerate(chosen_models):
+    #     breakpoint()
+    #     fit_list = _process_mc_iter(chosen_models, snr_image, s.mc_snr, s.mc_n_iterations, index)
 
-        # img_mc_output[index] = tc.fit.compile_spaxel_info_mc(fit_list, keys_to_save)
+    #     # choose how many iterations of mc:
+    #     # if snr_image[index] < s.mc_snr:
+    #     #     mc_n_iterations = s.mc_n_iterations
+    #     # else:
+    #     #     mc_n_iterations = 0
+    #     # if chosen_model is not None:
+    #     #     # fit_list = chosen_model.mc_iter(mc_n_iterations)
+    #     #     fit_list = _mc_iter(chosen_model, mc_n_iterations)
+
+    #     # img_modelresults[index] = fit_list
+
+    #     img_mc_output[(slice(None), *index)] = tc.fit.extract_spaxel_info_mc(
+    #         fit_list, fit_info, keys_to_save
+    #     )
+    pool = ctx.Pool(processes=4)
+    results = pool.map(
+        partial(
+            _process_mc_iter,
+            chosen_models,
+            snr_image,
+            s.mc_snr,
+            s.mc_n_iterations,
+            fit_info,
+            keys_to_save,
+        ),
+        cm_iterate,
+    )
+    img_mc_output = np.array(results).T.reshape((len(mc_label_row),) + spatial_shape)
+    # breakpoint()
+    # img_mc_output[index] = tc.fit.compile_spaxel_info_mc(fit_list, keys_to_save)
 
     # %%
     # save files.
@@ -365,3 +387,51 @@ def choose_best_fits(models, fit_results_T, s, fit_results):
         chosen_models = np.choose(final_choices - 1, fit_results, mode="clip")
 
     return chosen_models, final_choices, auto_aic_choices, user_check
+
+
+def _mc_iter(modelresult, mc_n_iterations=0, distribution="normal"):
+    if mc_n_iterations == 0:
+        return [modelresult]
+
+    # extract fit input from self
+    data = modelresult.data
+    sigma = 1 / modelresult.weights
+    params = modelresult.init_params
+    # print(params)
+
+    if distribution == "normal":
+        distribution_fcn = np.random.default_rng(42).normal
+        input1 = data  # loc ("center")
+        input2 = sigma  # scale ("standard deviation")
+    elif distribution == "uniform":
+        distribution_fcn = np.random.default_rng(42).uniform
+        input1 = data - 2 * sigma  # low
+        input2 = data + 2 * sigma  # high
+    else:
+        raise NotImplementedError("distribution " + distribution + " not implemented.")
+    # use the above definitions to calculate the monte carlo iterations.
+    mc_data = distribution_fcn(input1, input2, (mc_n_iterations, np.broadcast(input1, input2).size))
+    mc_fits = [modelresult]
+    for mcd in mc_data:
+        modelresult = copy(modelresult)
+        modelresult.params = params.copy()
+        modelresult.fit(data=mcd)  # , params=params)
+        mc_fits += [modelresult]
+    return mc_fits
+
+
+def _process_mc_iter(
+    models, snr_image, snr_threshold, mc_n_iterations, fit_info, keys_to_save, idx
+):
+    print("mc index: ", idx)
+    modelresult = models[idx]
+    if modelresult is None:
+        return [None]
+
+    data_snr = snr_image[idx]
+    if data_snr < snr_threshold:
+        mc_n_iterations = mc_n_iterations
+    else:
+        mc_n_iterations = 0
+    fit_list = _mc_iter(modelresult, mc_n_iterations)
+    return tc.fit.extract_spaxel_info_mc(fit_list, fit_info, keys_to_save)
