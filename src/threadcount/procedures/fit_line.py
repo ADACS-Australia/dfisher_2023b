@@ -112,7 +112,7 @@ def run(s):  # noqa: C901
     if len(s.monitor_pixels) > 0 and (s.setup_parameters):
         iterate_full = s.monitor_pixels
 
-    iterate, bl_iterate = tee(iterate_full, 2)
+    iterate, bl_iterate, cm_iterate = tee(iterate_full, 3)
 
     baseline_fitresults = None
     if s.baseline_subtract:
@@ -195,7 +195,7 @@ def run(s):  # noqa: C901
     img_modelresults = np.empty(spatial_shape, dtype=object)
     img_mc_output = np.empty((len(mc_label_row),) + spatial_shape)
 
-    cm_iterate = np.ndindex(chosen_models.shape)
+    # cm_iterate = np.ndindex(chosen_models.shape)
 
     # for index, chosen_model in np.ndenumerate(chosen_models):
     #     breakpoint()
@@ -228,6 +228,7 @@ def run(s):  # noqa: C901
         ),
         cm_iterate,
     )
+
     img_mc_output = np.array(results).T.reshape((len(mc_label_row),) + spatial_shape)
     # breakpoint()
     # img_mc_output[index] = tc.fit.compile_spaxel_info_mc(fit_list, keys_to_save)
@@ -413,10 +414,10 @@ def _mc_iter(modelresult, mc_n_iterations=0, distribution="normal"):
     mc_data = distribution_fcn(input1, input2, (mc_n_iterations, np.broadcast(input1, input2).size))
     mc_fits = [modelresult]
     for mcd in mc_data:
-        modelresult = copy(modelresult)
-        modelresult.params = params.copy()
-        modelresult.fit(data=mcd)  # , params=params)
-        mc_fits += [modelresult]
+        mrc = copy(modelresult)
+        mrc.params = params.copy()
+        mrc.fit(data=mcd)  # , params=params)
+        mc_fits += [mrc]
     return mc_fits
 
 
