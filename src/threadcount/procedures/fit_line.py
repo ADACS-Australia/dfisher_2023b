@@ -4,6 +4,7 @@ import threadcount as tc
 from itertools import tee
 import multiprocessing as mp
 from functools import partial
+import os
 
 ctx = mp.get_context("fork")
 
@@ -227,6 +228,7 @@ def run(s):  # noqa: C901
             keys_to_save,
         ),
         cm_iterate,
+        chunksize=200,
     )
 
     img_mc_output = np.array(results).T.reshape((len(mc_label_row),) + spatial_shape)
@@ -424,7 +426,9 @@ def _mc_iter(modelresult, mc_n_iterations=0, distribution="normal"):
 def _process_mc_iter(
     models, snr_image, snr_threshold, mc_n_iterations, fit_info, keys_to_save, idx
 ):
-    print("mc index: ", idx)
+    # print("mc index: ", idx)
+    pid = os.getpid()
+    print(f"Process ID: {pid} at mc index: {idx}")
     modelresult = models[idx]
     if modelresult is None:
         return [None]
