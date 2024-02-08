@@ -56,9 +56,8 @@ def HalphaNIImodparams():
 
 
 def SIImodparams():
-    model = tc.models.Const_2GaussModel()
-    # model = tc.models.Const_2GaussModel_fast()
-    # breakpoint()
+    # model = tc.models.Const_2GaussModel()
+    model = tc.models.Const_2GaussModel_fast()
     model.set_param_hint("deltax", value=-14.36, vary=True, max=-13.9, min=-14.9)
     # model.set_param_hint('deltax', value=-14, vary=False, max=-1, min=-17)
     model.set_param_hint("g1_center", expr="g2_center+deltax")
@@ -88,13 +87,6 @@ def custom_guess_function(data, x, self=model):
 
 
 model.guess = custom_guess_function
-
-# model.guess = lambda data,x : tc.models._guess_multiline2(self=model,data=data,x=x, sigma0=1.2,
-#     heights=(1., 1.),
-#     sigma_factors=(1., 1.),
-#     centers=(-14.36, 0),
-#     absolute_centers=True
-# )
 
 
 inst_wave = 6730.810 * 1.012611957403472651
@@ -228,8 +220,7 @@ print("Finished with script.")
 set_rcParams.reset_params()
 plt.show()
 
-# if __name__ == "__main__":
-#     main()
+
 end = time.time()
 end_cpu = time.process_time()
 print("total running time: ", end - start)
