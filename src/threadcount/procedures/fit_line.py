@@ -130,9 +130,8 @@ def run(s):  # noqa: C901
     # cm_iterate = np.ndindex(chosen_models.shape)
 
     # for index, chosen_model in np.ndenumerate(chosen_models):
-    #     breakpoint()
-    #     fit_list = _process_mc_iter(chosen_models, snr_image, s.mc_snr, s.mc_n_iterations, index)
-
+    #     res = _process_mc_iter(chosen_models, snr_image, s.mc_snr, s.mc_n_iterations, fit_info, keys_to_save, index)
+    # breakpoint()
     #     # choose how many iterations of mc:
     #     # if snr_image[index] < s.mc_snr:
     #     #     mc_n_iterations = s.mc_n_iterations
@@ -144,9 +143,7 @@ def run(s):  # noqa: C901
 
     #     # img_modelresults[index] = fit_list
 
-    #     img_mc_output[(slice(None), *index)] = tc.fit.extract_spaxel_info_mc(
-    #         fit_list, fit_info, keys_to_save
-    #     )
+    # img_mc_output[(slice(None), *index)] = res
     pool = ctx.Pool(processes=4)
     results = pool.map(
         partial(
@@ -159,7 +156,7 @@ def run(s):  # noqa: C901
             keys_to_save,
         ),
         cm_iterate,
-        chunksize=200,
+        # chunksize=200,
     )
 
     img_mc_output = np.array(results).T.reshape((len(mc_label_row),) + spatial_shape)
@@ -384,9 +381,12 @@ def _mc_iter(modelresult, mc_n_iterations=0, distribution="normal"):
     else:
         raise NotImplementedError("distribution " + distribution + " not implemented.")
     # use the above definitions to calculate the monte carlo iterations.
-    mc_data = distribution_fcn(input1, input2, (mc_n_iterations, np.broadcast(input1, input2).size))
+    # mc_data = distribution_fcn(input1, input2, (mc_n_iterations, np.broadcast(input1, input2).size))
+    # breakpoint()
     mc_fits = [modelresult]
-    for mcd in mc_data:
+    # for mcd in mc_data:
+    for _ in range(mc_n_iterations):
+        mcd = distribution_fcn(input1, input2)
         mrc = copy(modelresult)
         mrc.params = params.copy()
         mrc.fit(data=mcd)  # , params=params)
